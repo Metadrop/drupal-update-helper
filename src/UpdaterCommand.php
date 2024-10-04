@@ -15,9 +15,6 @@ use Symfony\Component\Console\Helper\TableSeparator;
  * Updates drupal modules and packages.
  */
 class UpdaterCommand extends Command {
-
-  protected static $defaultName = 'update';
-
   /**
    * Prints the output of the command.
    *
@@ -72,6 +69,17 @@ class UpdaterCommand extends Command {
   /**
    * {@inheritdoc}
    */
+  public function __construct(?string $name = null)
+  {
+    if (empty($name)) {
+      $name = 'update';
+    }
+    parent::__construct($name);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   protected function configure() {
     $this->setHelp('Update composer packages.
 
@@ -116,7 +124,7 @@ Update includes:
   /**
    * {@inheritdoc}
    */
-  protected function execute(InputInterface $input, OutputInterface $output) {
+  protected function execute(InputInterface $input, OutputInterface $output) : int {
     $this->runCommand('cp composer.lock composer.drupalupdater.lock');
     $this->printSummary();
     $this->printHeader1('1. Consolidating configuration');
