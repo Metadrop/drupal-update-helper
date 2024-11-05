@@ -182,7 +182,7 @@ Update includes:
    * @return Process
    *   It can be used to obtain the command output if needed.
    *
-   * @throws ProcessFailedException
+   * @throws \RuntimeException
    *   When the command fails.
    */
   protected function runCommand(string $command) {
@@ -190,7 +190,7 @@ Update includes:
     $process->setTimeout(300);
     $process->run();
     if (!$process->isSuccessful()) {
-      throw new ProcessFailedException($process);
+      throw new \RuntimeException(sprintf('Error running "%s" command: %s', $command, $process->getErrorOutput()));
     }
     return $process;
   }
@@ -659,7 +659,8 @@ Update includes:
    */
   protected function handlePackageUpdateErrors(\Exception $e) {
     $this->output->writeln("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    $this->output->writeln($e->getProcess()->getErrorOutput());
+    $error_ouput = $e instanceof ProcessFailedException ? $e->getProcess()->getErrorOutput() : $e->getMessage();
+    $this->output->writeln($error_ouput);
     $this->output->writeln('Updating package FAILED: recovering previous state.');
     $this->output->writeln('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     $this->runCommand('git checkout composer.json composer.lock');
@@ -733,7 +734,7 @@ Update includes:
           $unsupported_modules_list[$unsupported_module['project_name']]['environments'][] = $environment;
         }
       }
-      catch (ProcessFailedException $exception) {
+      catch (\RuntimeException $exception) {
         $this->output->writeln('');
         $this->output->write($exception->getMessage());
       }
