@@ -542,7 +542,7 @@ Update includes:
 
     $commit_message = $this->calculateModuleUpdateCommitMessage($package);
 
-    $this->runCommand(sprintf('git commit -m "%s" -m "%s" --author="%s" -n', $commit_message, $updated_packages, $this->commitAuthor));
+    $this->runCommand(sprintf('git commit -m "%s" -m "%s" --author="%s" -n', $commit_message, $updated_packages, $this->getConfiguration()->getAuthor()));
 
   }
 
@@ -709,7 +709,7 @@ Update includes:
    */
   protected function showPendingUpdates() {
 
-    if ($this->onlySecurity) {
+    if ($this->getConfiguration()->onlyUpdateSecurities()) {
       $this->printHeader2('Not Updated Securities:');
       $this->output->writeln(
         $this->runCommand('composer audit --locked --format plain 2>&1 | grep ^Package | cut -f2 -d: | sort -u')->getOutput(),
