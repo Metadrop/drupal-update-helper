@@ -3,6 +3,8 @@
 namespace DrupalUpdater;
 
 use Composer\InstalledVersions;
+use DrupalArtifactBuilder\Config\Config;
+use DrupalUpdater\Config\ConfigInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -23,38 +25,10 @@ class UpdaterCommand extends Command {
    */
   protected OutputInterface $output;
 
-  /**
-   * If true, only security updates will be updated.
-   *
-   * @var bool
-   */
-  protected bool $onlySecurity;
+  protected ConfigInterface $config;
 
   /**
-   * If true, development packages won't be updated.
-   *
-   * @var bool
-   */
-  protected bool $noDev;
-
-  /**
-   * List of environments to update.
-   *
-   * @var array
-   */
-  protected array $environments;
-
-  /**
-   * Author of the commits.
-   *
-   * @var string
-   */
-  protected string $commitAuthor;
-
-  /**
-   * List of packages that will be updated.
-   *
-   * @var array
+   * List of packages to update.
    */
   protected array $packagesToUpdate;
 
@@ -88,8 +62,9 @@ Update includes:
   - Commit current configuration not exported (Drupal +8).
   - Identify updatable composer packages (outdated)
   - For each package try to update and commit it (recovers previous state if fails)');
-    $this->addOption('environments', 'envs', InputOption::VALUE_REQUIRED,'List of drush aliases that are needed to update', '@self');
-    $this->addOption('author', 'a', InputOption::VALUE_REQUIRED, 'Git author', 'Drupal <drupal@update-helper>');
+    $this->addOption('config', 'c', InputOption::VALUE_REQUIRED, 'Configuration file', '.drupal-updater.yml');
+    $this->addOption('environments', 'envs', InputOption::VALUE_OPTIONAL, 'List of drush aliases that are needed to update');
+    $this->addOption('author', 'a', InputOption::VALUE_OPTIONAL, 'Git author');
     $this->addOption('security', 's', InputOption::VALUE_NONE, 'Only update security packages');
     $this->addOption('no-dev', 'nd', InputOption::VALUE_NONE, 'Only update main requirements');
     $this->addOption('packages', 'pl', InputOption::VALUE_OPTIONAL, 'Comma separated list of packages to update');
@@ -101,25 +76,38 @@ Update includes:
   protected function initialize(InputInterface $input, OutputInterface $output) {
     $this->output = $output;
     $this->printHeader1('SETUP');
-    $this->output->writeln(sprintf('Environments: %s', $input->getOption('environments')));
-    $this->environments = explode(',', $input->getOption('environments'));
-    $this->commitAuthor = $input->getOption('author');
-    $this->output->writeln(sprintf('GIT author will be overriden with: %s', $this->commitAuthor));
+    if (!isset($this->config)) {
+      $this->setupConfig($input->getOption('config'));
+    }
+    if (!empty($input->getOption('environments'))) {
+      $this->getConfiguration()->setEnvironments(explode(',', $input->getOption('environments')));
+    }
     $this->output->writeln('Drupal web root found at ' . $this->findDrupalWebRoot());
-    $this->onlySecurity = (bool) $input->getOption('security');
-    if ($this->onlySecurity) {
+    $this->output->writeln(sprintf('Environments: %s', implode(', ', $this->getConfiguration()->getEnvironments())));
+    if (!empty($input->getOption('author'))) {
+      $this->getConfiguration()->setAuthor($input->getOption('author'));
+    }
+    $this->output->writeln(sprintf('GIT author will be overriden with: %s', $this->getConfiguration()->getAuthor()));
+    if (!empty($input->getOption('security'))) {
+      $this->getConfiguration()->setOnlySecurities(true);
       $this->output->writeln('Only security updates will be done');
     }
-    $this->noDev = (bool) $input->getOption('no-dev');
-    if ($this->noDev) {
+
+    if (!empty($input->getOption('no-dev'))) {
+      $this->getConfiguration()->setNoDev(true);
       $this->output->writeln("Dev packages won't be updated");
     }
+
     $this->output->writeln('');
 
-    $packages_to_update = $input->getOption('packages') ?? '';
-    if (!empty($packages_to_update)) {
-      $this->packagesToUpdate = explode(',', filter_var($packages_to_update, FILTER_SANITIZE_ADD_SLASHES));
+    $packages_to_update_parameter = $input->getOption('packages') ?? '';
+    if (!empty($packages_to_update_parameter)) {
+      $this->getConfiguration()->setPackages(explode(',', filter_var($packages_to_update_parameter, FILTER_SANITIZE_ADD_SLASHES)));
       $this->showFullReport = FALSE;
+    }
+
+    if (!empty($this->getConfiguration()->getPackages())) {
+      $this->packagesToUpdate = $this->getConfiguration()->getPackages();
     }
   }
 
@@ -132,6 +120,7 @@ Update includes:
     $this->printHeader1('1. Consolidating configuration');
     $this->consolidateConfiguration();
     $this->printHeader1('2. Checking packages');
+
     if (!isset($this->packagesToUpdate) || empty($this->packagesToUpdate)) {
       $this->checkPackages();
     }
@@ -153,6 +142,29 @@ Update includes:
     $this->cleanup();
 
     return 0;
+  }
+
+  protected function setupConfig(string $file) {
+    $this->output->writeln(sprintf('Selected configuration file: %s', $configuration_filepath));
+
+    if (file_exists($configuration_filepath)) {
+      $this->output->writeln((sprintf('Configuration file found at %s', $configuration_filepath));
+      $config = Config::createFromConfigurationFile($configuration_filepath);
+    }
+    else {
+      $this->output->writeln((sprintf('No configuration file found at %s. Using command line parameters.', $configuration_filepath));
+      $config = new Config();
+    }
+
+    $this->setConfiguration($config);
+  }
+
+  protected function setConfiguration(ConfigInterface $config) {
+    $this->config = $config;
+  }
+
+  protected function getConfiguration() {
+    return $this->config;
   }
 
   /**
@@ -221,7 +233,7 @@ Update includes:
    * @return string
    */
   protected function getNoDevParameter(){
-    return $this->noDev ? '--no-dev' : '';
+    return $this->getConfiguration()->noDev() ? '--no-dev' : '';
   }
 
   /**
@@ -247,8 +259,9 @@ Update includes:
     $this->runDrushCommand('cr');
     $this->runDrushCommand('cim -y');
     $this->output->writeln('');
+    $this->output->writeln('');
 
-    foreach ($this->environments as $environment) {
+    foreach ($this->getConfiguration()->getEnvironments() as $environment) {
       $this->output->writeln(sprintf('Consolidating %s environment', $environment));
       $this->runDrushCommand('cex -y', [$environment]);
 
@@ -280,7 +293,7 @@ Update includes:
    * will be updated.
    */
   protected function checkPackages() {
-    if ($this->onlySecurity) {
+    if ($this->getConfiguration()->onlyUpdateSecurities()) {
       $package_list = $this
         ->runCommand(sprintf('composer audit --locked %s --format plain 2>&1 | grep ^Package | cut -f2 -d: | sort -u', $this->getNoDevParameter()))
         ->getOutput();
@@ -813,16 +826,6 @@ Update includes:
   protected function isDrupalExtension(string $package) {
     $package_type = $this->runCommand(sprintf("composer show %s | grep ^type | awk '{print $3}'", $package))->getOutput();
     return $package_type != 'drupal-library' && str_starts_with($package_type, 'drupal');
-  }
-
-  /**
-   * Get the list of packages to update.
-   *
-   * @return array
-   *   List of packages to update.
-   */
-  protected function getPackagesToUpdate() {
-    return $this->packagesToUpdate;
   }
 
   /**
