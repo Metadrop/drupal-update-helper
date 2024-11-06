@@ -2,6 +2,7 @@
 
 namespace DrupalUpdater;
 
+use Composer\InstalledVersions;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -104,6 +105,7 @@ Update includes:
     $this->environments = explode(',', $input->getOption('environments'));
     $this->commitAuthor = $input->getOption('author');
     $this->output->writeln(sprintf('GIT author will be overriden with: %s', $this->commitAuthor));
+    $this->output->writeln('Drupal web root found at ' . $this->findDrupalWebRoot());
     $this->onlySecurity = (bool) $input->getOption('security');
     if ($this->onlySecurity) {
       $this->output->writeln('Only security updates will be done');
@@ -505,7 +507,7 @@ Update includes:
 
     if ($this->isDrupalExtension($package)) {
       try {
-        $this->runCommand('git add web');
+        $this->runCommand(sprintf('git add %s', $this->findDrupalWebRoot()));
         $this->runDrushCommand('cr');
         $this->runDrushCommand('updb -y');
         $this->runDrushCommand('cex -y');
@@ -529,6 +531,29 @@ Update includes:
 
     $this->runCommand(sprintf('git commit -m "%s" -m "%s" --author="%s" -n', $commit_message, $updated_packages, $this->commitAuthor));
 
+  }
+
+  /**
+   * Finds the Drupal root.
+   *
+   * Drupal root standard is web, but there are other projects where the path is docroot,
+   * and another complex structures that requires changing the root folder.
+   *
+   * @return string|void
+   *   Drupal root.
+   */
+  protected function findDrupalWebRoot() {
+    $core = InstalledVersions::getInstallPath('drupal/core') . '/../';
+
+    if (!empty($core)) {
+      return realpath($core);
+    }
+
+    foreach (['web', 'docroot', 'public_html'] as $folder) {
+      if (!is_link($folder) && is_dir($folder)) {
+        return $folder;
+      }
+    }
   }
 
   /**
