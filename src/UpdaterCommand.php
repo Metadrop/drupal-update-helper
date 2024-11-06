@@ -144,7 +144,7 @@ Update includes:
     return 0;
   }
 
-  protected function setupConfig(string $file) {
+  protected function setupConfig(string $configuration_filepath) {
     $this->output->writeln(sprintf('Selected configuration file: %s', $configuration_filepath));
 
     if (file_exists($configuration_filepath)) {
