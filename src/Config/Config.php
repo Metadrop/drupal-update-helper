@@ -136,8 +136,9 @@ class Config implements ConfigInterface {
       if (isset($configuration[$string_field]) && !is_string($configuration[$string_field])) {
         throw new \InvalidArgumentException(sprintf('"%s" configuration key must be a string, %s given', $string_field, gettype($configuration['repository'])));
       }
-
-      $instance->{$string_field} = $configuration[$string_field];
+      elseif (!empty($configuration[$string_field])) {
+        $instance->{$string_field} = $configuration[$string_field];
+      }
     }
 
     $boolean_fields = [
@@ -150,8 +151,9 @@ class Config implements ConfigInterface {
       if (isset($configuration[$boolean_field]) && !is_bool($configuration[$boolean_field])) {
         throw new \InvalidArgumentException(sprintf('"%s" config key must be a boolean, %s given!', $boolean_field, gettype($configuration[$boolean_field])));
       }
-
-      $instance->{$boolean_field} = $configuration[$boolean_field];
+      elseif (!empty($configuration[$boolean_field])) {
+        $instance->{$boolean_field} = $configuration[$boolean_field];
+      }
     }
 
     $array_fields = [
@@ -163,7 +165,9 @@ class Config implements ConfigInterface {
       if (isset($configuration[$array_field]) && !is_array($configuration[$array_field])) {
         throw new \InvalidArgumentException(sprintf('"%s" config key must be an array, %s given!', $array_field, gettype($configuration[$array_field])));
       }
-      $instance->{$array_field} = $configuration[$array_field];
+      elseif (!empty($configuration[$array_field])) {
+        $instance->{$array_field} = $configuration[$array_field];
+      }
     }
 
     return $instance;

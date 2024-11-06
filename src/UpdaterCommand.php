@@ -90,11 +90,17 @@ Update includes:
     $this->output->writeln(sprintf('GIT author will be overriden with: %s', $this->getConfiguration()->getAuthor()));
     if (!empty($input->getOption('security'))) {
       $this->getConfiguration()->setOnlySecurities(true);
+    }
+
+    if ($this->getConfiguration()->onlyUpdateSecurities()) {
       $this->output->writeln('Only security updates will be done');
     }
 
     if (!empty($input->getOption('no-dev'))) {
       $this->getConfiguration()->setNoDev(true);
+    }
+
+    if ($this->getConfiguration()->noDev()) {
       $this->output->writeln("Dev packages won't be updated");
     }
 
