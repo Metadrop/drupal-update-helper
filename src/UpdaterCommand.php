@@ -3,7 +3,7 @@
 namespace DrupalUpdater;
 
 use Composer\InstalledVersions;
-use DrupalArtifactBuilder\Config\Config;
+use DrupalUpdater\Config\Config;
 use DrupalUpdater\Config\ConfigInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -148,11 +148,11 @@ Update includes:
     $this->output->writeln(sprintf('Selected configuration file: %s', $configuration_filepath));
 
     if (file_exists($configuration_filepath)) {
-      $this->output->writeln((sprintf('Configuration file found at %s', $configuration_filepath));
+      $this->output->writeln(sprintf('Configuration file found at %s', $configuration_filepath));
       $config = Config::createFromConfigurationFile($configuration_filepath);
     }
     else {
-      $this->output->writeln((sprintf('No configuration file found at %s. Using command line parameters.', $configuration_filepath));
+      $this->output->writeln(sprintf('No configuration file found at %s. Using command line parameters.', $configuration_filepath));
       $config = new Config();
     }
 
@@ -178,7 +178,7 @@ Update includes:
    */
   protected function runDrushCommand(string $command, array $environments = []) {
     if (empty($environments)) {
-      $environments = $this->environments;
+      $environments = $this->getConfiguration()->getEnvironments();
     }
 
     foreach ($environments as $environment) {
@@ -275,7 +275,7 @@ Update includes:
       $this->runCommand(sprintf(
         'git add config && git commit -m "CONFIG - Consolidate current configuration on %s" --author="%s" -n || echo "No changes to commit"',
         $environment,
-        $this->commitAuthor
+        $this->getConfiguration()->getAuthor(),
       ));
       $this->output->writeln('');
     }
@@ -759,7 +759,7 @@ Update includes:
     $this->printHeader2('Unsupported Drupal modules:');
 
     $unsupported_modules_list = [];
-    foreach ($this->environments as $environment) {
+    foreach ($this->getConfiguration()->getEnvironments() as $environment) {
       try {
         $unsupported_modules = json_decode(trim($this
           ->runCommand(sprintf('drush %s php-script %s/../scripts/unsupported-modules.php', $environment, __DIR__))
