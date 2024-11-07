@@ -1,0 +1,11 @@
+# Commits by drupal updater will be authored by this author.
+author: "Drupal <drupal@update-helper>"
+# Set to true to only update packages deployed in production.
+noDev: false
+# Set to true to only update securities.
+onlySecurities: false
+# Allows specify which packages will be updated.
+packages: []
+# List of environments to update.
+environments: ['@self']
+
