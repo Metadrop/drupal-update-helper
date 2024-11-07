@@ -65,8 +65,8 @@ Update includes:
     $this->addOption('config', 'c', InputOption::VALUE_REQUIRED, 'Configuration file', '.drupal-updater.yml');
     $this->addOption('environments', 'envs', InputOption::VALUE_OPTIONAL, 'List of drush aliases that are needed to update');
     $this->addOption('author', 'a', InputOption::VALUE_OPTIONAL, 'Git author');
-    $this->addOption('security', 's', InputOption::VALUE_NONE, 'Only update security packages');
-    $this->addOption('no-dev', 'nd', InputOption::VALUE_NONE, 'Only update main requirements');
+    $this->addOption('security', 's', InputOption::VALUE_NEGATABLE, 'Choose to update only security packages');
+    $this->addOption('dev', 'nd', InputOption::VALUE_NEGATABLE, 'Choose to update dev requirements.');
     $this->addOption('packages', 'pl', InputOption::VALUE_OPTIONAL, 'Comma separated list of packages to update');
   }
 
@@ -75,36 +75,41 @@ Update includes:
    */
   protected function initialize(InputInterface $input, OutputInterface $output) {
     $this->output = $output;
-    $this->printHeader1('SETUP');
-    if (!isset($this->config)) {
-      $this->setupConfig($input->getOption('config'));
-    }
+    $this->setupConfig($input->getOption('config'));
+    $this->mapInputToConfiguration($input);
+    $this->logConfiguration();
+  }
+
+  /**
+   * Maps all the input data provided to the configuration.
+   *
+   * Anything passed to input can override configuration.
+   *
+   * @param InputInterface $input
+   *   Input.
+   */
+  protected function mapInputToConfiguration(InputInterface $input) {
     if (!empty($input->getOption('environments'))) {
       $this->getConfiguration()->setEnvironments(explode(',', $input->getOption('environments')));
     }
-    $this->output->writeln('Drupal web root found at ' . $this->findDrupalWebRoot());
-    $this->output->writeln(sprintf('Environments: %s', implode(', ', $this->getConfiguration()->getEnvironments())));
+
     if (!empty($input->getOption('author'))) {
       $this->getConfiguration()->setAuthor($input->getOption('author'));
     }
-    $this->output->writeln(sprintf('GIT author will be overriden with: %s', $this->getConfiguration()->getAuthor()));
+
     if (!empty($input->getOption('security'))) {
       $this->getConfiguration()->setOnlySecurities(true);
     }
-
-    if ($this->getConfiguration()->onlyUpdateSecurities()) {
-      $this->output->writeln('Only security updates will be done');
+    elseif (!empty($input->getOption('no-security'))) {
+      $this->getConfiguration()->setOnlySecurities(false);
     }
 
-    if (!empty($input->getOption('no-dev'))) {
+    if (!empty($input->getOption('dev'))) {
+      $this->getConfiguration()->setNoDev(false);
+    }
+    elseif (!empty($input->getOption('no-dev'))) {
       $this->getConfiguration()->setNoDev(true);
     }
-
-    if ($this->getConfiguration()->noDev()) {
-      $this->output->writeln("Dev packages won't be updated");
-    }
-
-    $this->output->writeln('');
 
     $packages_to_update_parameter = $input->getOption('packages') ?? '';
     if (!empty($packages_to_update_parameter)) {
@@ -115,6 +120,30 @@ Update includes:
     if (!empty($this->getConfiguration()->getPackages())) {
       $this->packagesToUpdate = $this->getConfiguration()->getPackages();
     }
+  }
+
+  /**
+   * Show users what config will be applied to the current update.
+   */
+  protected function logConfiguration() {
+    $this->printHeader1('SETUP');
+    $this->output->writeln('Drupal web root found at ' . $this->findDrupalWebRoot());
+    $this->output->writeln(sprintf('Environments: %s', implode(', ', $this->getConfiguration()->getEnvironments())));
+    $this->output->writeln(sprintf('GIT author will be overriden with: %s', $this->getConfiguration()->getAuthor()));
+
+    if ($this->getConfiguration()->onlyUpdateSecurities()) {
+      $this->output->writeln('Only security updates will be done');
+    }
+
+    if ($this->getConfiguration()->noDev()) {
+      $this->output->writeln("Dev packages won't be updated");
+    }
+
+    if (!empty($this->getConfiguration()->getPackages())) {
+      $this->output->writeln(sprintf('Selected packages: %s', implode(', ', $this->getConfiguration()->getPackages())));
+    }
+
+    $this->output->writeln('');
   }
 
   /**
