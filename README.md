@@ -28,6 +28,36 @@ Or, if you are using `ddev`:
 ddev composer require metadrop/drupal-updater
 ```
 
+## Configuration
+
+Configuration helps automating update workflows. All the parameters that are repeated through updates
+can be added to a configuration file to just launch `drupal-updater`, saving time adding the parameters manually,
+or doing custom helpers in local / ci environments.
+
+There is a template with configuration ready to use at **vendor/metadrop/drupal-updater/drupal-updater.yml.dist**, to use it just copy it to the root:
+
+```
+cp vendor/metadrop/drupal-updater/.drupal-updater.yml.dist .drupal-updater.yml
+```
+
+The file .drupal-updater.yml at root is the default path, but it is possible to override configuration path by using the **--config** parameter:
+
+```
+drupal-updater --config .drupal-updater.securities.yml
+```
+
+Edit .drupal-updater.yml to setup custom parameters when needed.
+
+### Configuration variables
+
+The following variables can be setup through .drupal-updater.yml
+
+- **author**: Commits author
+- **noDev**: Set to true to only update packages deployed in production.
+- **onlySecurities**: Set to true to only update securities.
+- **packages**: Allows specify which packages will be updated.
+- **environments**: Array list of environments to update.
+
 
 ## How it works
 
@@ -51,6 +81,7 @@ Basic update:
 
 Parameters allowed:
 
+- **--config**: Specify where the configuration file is located.
 - **--security**: It will update only securities.
 - **--no-dev**: It won't update dev dependencies, only the primary ones.
 - **--author**: It sets the git commits author. Example: `Test<test@example.com>`
