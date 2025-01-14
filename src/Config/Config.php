@@ -38,6 +38,15 @@ class Config implements ConfigInterface {
   protected bool $noDev = false;
 
   /**
+   * Set to true to consolidate configuration.
+   *
+   * Used to allow not consolidating conrfiguration in special cases.
+   *
+   * @var bool
+   */
+  protected bool $consolidateConfiguration = true;
+
+  /**
    * If set, only this packages will be updated, along its dependencies.
    *
    * @var array
@@ -115,6 +124,20 @@ class Config implements ConfigInterface {
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public function setConsolidateConfiguration(bool $consolidate) {
+    $this->consolidateConfiguration = $consolidate;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getConsolidateConfiguration(): bool {
+    return $this->consolidateConfiguration;
+  }
+
+  /**
    * Creates a configuration isntance given a YAML configuration file.
    *
    * @param string $config_file
@@ -144,14 +167,14 @@ class Config implements ConfigInterface {
     $boolean_fields = [
       'onlySecurities',
       'noDev',
+      'consolidateConfiguration',
     ];
-
 
     foreach ($boolean_fields as $boolean_field) {
       if (isset($configuration[$boolean_field]) && !is_bool($configuration[$boolean_field])) {
         throw new \InvalidArgumentException(sprintf('"%s" config key must be a boolean, %s given!', $boolean_field, gettype($configuration[$boolean_field])));
       }
-      elseif (!empty($configuration[$boolean_field])) {
+      elseif (isset($configuration[$boolean_field])) {
         $instance->{$boolean_field} = $configuration[$boolean_field];
       }
     }

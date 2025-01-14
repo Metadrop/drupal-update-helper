@@ -86,4 +86,20 @@ interface ConfigInterface {
    */
   public function setPackages(array $packages);
 
+  /**
+   * Set if configuration should be or not procesed.
+   *
+   * @param bool $consolidate
+   *   Set to true to import / export configuraton.
+   */
+  public function setConsolidateConfiguration(bool $consolidate);
+
+  /**
+   * Get if configuration must be exported or imported.
+   *
+   * @return bool
+   *   TRUE when configuration must be managed.
+   */
+  public function getConsolidateConfiguration();
+
 }

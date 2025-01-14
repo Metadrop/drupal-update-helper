@@ -68,6 +68,7 @@ Update includes:
     $this->addOption('security', 's', InputOption::VALUE_NEGATABLE, 'Choose to update only security packages');
     $this->addOption('dev', 'nd', InputOption::VALUE_NEGATABLE, 'Choose to update dev requirements.');
     $this->addOption('packages', 'pl', InputOption::VALUE_OPTIONAL, 'Comma separated list of packages to update');
+    $this->addOption('consolidate-configuration', 'cc', InputOption::VALUE_NEGATABLE, 'If false, configuration will not be consolidated.');
   }
 
   /**
@@ -109,6 +110,13 @@ Update includes:
     }
     elseif (!empty($input->getOption('no-dev'))) {
       $this->getConfiguration()->setNoDev(true);
+    }
+
+    if (!empty($input->getOption('consolidate-configuration'))) {
+      $this->getConfiguration()->setConsolidateConfiguration(true);
+    }
+    elseif (!empty($input->getOption('no-consolidate-configuration'))) {
+      $this->getConfiguration()->setConsolidateConfiguration(false);
     }
 
     $packages_to_update_parameter = $input->getOption('packages') ?? '';
@@ -153,7 +161,15 @@ Update includes:
     $this->runCommand('cp composer.lock composer.drupalupdater.lock');
     $this->printSummary();
     $this->printHeader1('1. Consolidating configuration');
-    $this->consolidateConfiguration();
+
+    if ($this->config->getConsolidateConfiguration()) {
+      $this->consolidateConfiguration();
+    }
+    else {
+      $this->output->writeln('Configuration consolidation skipped');
+      $this->output->writeln('');
+    }
+
     $this->printHeader1('2. Checking packages');
 
     if (!isset($this->packagesToUpdate) || empty($this->packagesToUpdate)) {
@@ -558,9 +574,11 @@ Update includes:
         $this->runCommand(sprintf('git add %s', $this->findDrupalWebRoot()));
         $this->runDrushCommand('cr');
         $this->runDrushCommand('updb -y');
-        $this->runDrushCommand('cex -y');
-        $this->output->writeln('');
-        $this->runCommand('git add config');
+        if ($this->config->getConsolidateConfiguration()) {
+          $this->runDrushCommand('cex -y');
+          $this->output->writeln('');
+          $this->runCommand('git add config');
+        }
       }
       catch (\Exception $e) {
         $this->handlePackageUpdateErrors($e);
